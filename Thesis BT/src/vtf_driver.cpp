@@ -76,6 +76,8 @@ void vtf_driver::change_motor(int motorNum){
 void vtf_driver::tcas_set_multi(int *motors){
     uint8_t TCAADDR0_Addr = 0;
     uint8_t TCAADDR1_Addr = 0;
+    byte error;
+    byte error1;
 
 
     for(int i = 0; i < 14; i++){ 
@@ -122,19 +124,32 @@ void vtf_driver::tcas_set_multi(int *motors){
 
         }
     }
-    // Serial.println("0x70 Add");
-    // Serial.println(TCAADDR0_Addr, BIN);
-    // Serial.println("0x74 Add");
-    // Serial.println(TCAADDR1_Addr, BIN);
+    Serial.println("0x70 Add");
+    Serial.println(TCAADDR0_Addr, BIN);
+    Serial.println("0x74 Add");
+    Serial.println(TCAADDR1_Addr, BIN);
     
     Wire.beginTransmission(TCAADDR0);
     Wire.write(TCAADDR0_Addr);
-    Wire.endTransmission(TCAADDR0);
+    error = Wire.endTransmission(TCAADDR0);
+    if (error) {
+		    Serial.println("Error occured when writing to TCAADDR0");
+		if (error == 5)
+            Serial.println("It was a timeout");
+            Serial.println();
+    }
+    
 
     
 	Wire.beginTransmission(TCAADDR1);
 	Wire.write(TCAADDR1_Addr);
-	Wire.endTransmission(TCAADDR1); 
+	error1 = Wire.endTransmission(TCAADDR1); 
+    if (error1) {
+		    Serial.println("Error occured when writing to TCAADDR1");
+		if (error1 == 5)
+            Serial.println("It was a timeout");
+            Serial.println();
+    }
 
 }
 
@@ -300,4 +315,12 @@ void vtf_driver::ERM_setup(int motorNum, Adafruit_DRV2605 drv_x){
 	drv_x.setMode(DRV2605_MODE_INTTRIG); 
 	drv_x.setWaveform(0, 0);
     drv_x.go();
+}
+
+uint8_t vtf_driver::is_LRA(int motorNum){
+    if(motorNum == 3 || motorNum == 4 ||motorNum == 8 ||motorNum == 9){
+        return 0;
+    } else {
+        return 1;
+    }
 }

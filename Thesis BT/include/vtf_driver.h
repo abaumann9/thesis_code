@@ -32,6 +32,7 @@ class vtf_driver {
         void ERM_setup(int motorNum, Adafruit_DRV2605 drv_x);
         uint8_t get_tcas(int motorNum);
         uint8_t get_tcas_port(int motorNum);
+        uint8_t is_LRA(int motorNum);
 
     private:
 };

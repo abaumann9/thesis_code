@@ -7,22 +7,26 @@
 #include "vtf_driver.h"
 #include <stdint.h>
 
+// BLE Service that is advertised
 BLEService vtfService("d2411652-234a-11ec-9621-0242ac130002"); // BLE LED Service
 
-const int WRITE_BUFFER_SIZE = 256;
-bool WRITE_BUFFER_FIZED_LENGTH = false;
 
-// BLE LED Switch Characteristic - custom 128-bit UUID, read and writable by central
+const int WRITE_BUFFER_SIZE = 256;			// Max byte size of the incoming message (can be increased to 512)
+bool WRITE_BUFFER_FIZED_LENGTH = false;		// Arduino BLE Docs talk about this unsure of function 
+
+// BLE VTF Switch Characteristic - custom 128-bit UUID, read and writable by central
 BLECharacteristic switchCharacteristic("b8aff320-234a-11ec-9621-0242ac130002",BLEWriteWithoutResponse | BLEWrite, WRITE_BUFFER_SIZE, WRITE_BUFFER_FIZED_LENGTH);
 
 
 /* MESSSAGE TYPES */
+/* Define the type of message being sent over serial or BLE*/
 #define PreDefinedType 		0x50
 #define RealTimeType 		0x52
 #define GoType 				0x47
 #define PauseType 			0x53
 #define LoopType 			0x4C
 
+//Encode the start and end of blocks and commands
 #define StartBlock 			0x41
 #define EndBlock 			0x45
 #define StartCommand 		0x73
@@ -73,7 +77,12 @@ int current_vibration_mode = PRE_DEFINED;
 int current_real_time_motor = 40;
 
 
-
+/**************************************************************************/
+/*!
+  @brief Sets up the onboard RGB LEDs on the nano 33 ble. Can be used for
+		debug or conveying information to users
+*/
+/**************************************************************************/
 void rgb_setup(void){
   // set LED's pin to output mode
   pinMode(LEDR, OUTPUT);
@@ -87,6 +96,14 @@ void rgb_setup(void){
   digitalWrite(LEDB, HIGH);                // will turn the LED off
 }
 
+/**************************************************************************/
+/*!
+  @brief Set the waveform of multiple DRVs. Assumes they have already been 
+		 selected on the TCAS with tcas_set_multi
+  @param pre_programmed_num Vibration type to program into motors
+  @param motors Pointer to array of motors to set. End array with -1
+*/
+/**************************************************************************/
 void set_multi(int pre_programmed_num, int *motors){
 	    for(int i = 0; i < 14; i++){ 
         if(motors[i] == -1){
@@ -148,34 +165,98 @@ void set_multi(int pre_programmed_num, int *motors){
     }
 }
 
+/**************************************************************************/
+/*!
+  @brief Changes the vibration type of all motors
+  @param vibration_type Either REAL_TIME or PRE_DEFINED
+*/
+/**************************************************************************/
 void switchVibrationType(int vibration_type){
-	//int all_motors[14] = {0,1,2,3,4,5,6,7,8,9,10,11,12,-1};
 	//driver.tcas_set_multi(all_motors);
-	if(vibration_type == PRE_DEFINED){
-		driver.change_motor(MOTOR3);
-		drv_3.setMode(DRV2605_MODE_INTTRIG); 
+
+	//Work around for multiple writing error
+	int first[3] = {0,1,-1};
+	int second[3] = {2,3,-1};
+	int third[3] = {4,5,-1};
+	int fourth[3] = {6,7,-1};
+	int fifth[3] = {8,9,-1};
+	int sixth[3] = {10,11,-1};
+
+
+	if(vibration_type == REAL_TIME){
+		Serial.println("CHANGING TO REALTIME");
+		driver.tcas_set_multi(first);
+		drv_1.setMode(DRV2605_MODE_REALTIME); 
+		delay(300);
+		driver.tcas_set_multi(second);
+		drv_1.setMode(DRV2605_MODE_REALTIME); 
+		delay(300);
+		driver.tcas_set_multi(third);
+		drv_1.setMode(DRV2605_MODE_REALTIME); 
+		delay(300);
+		driver.tcas_set_multi(fourth);
+		drv_1.setMode(DRV2605_MODE_REALTIME); 
+		delay(300);
+		driver.tcas_set_multi(fifth);
+		drv_1.setMode(DRV2605_MODE_REALTIME); 
+		delay(300);
+		driver.tcas_set_multi(sixth);
+		drv_1.setMode(DRV2605_MODE_REALTIME); 
+		delay(300);
+		driver.change_motor(MOTOR12);
+		drv_1.setMode(DRV2605_MODE_REALTIME); 
+		delay(300);
+		Serial.println("Done");
+	
 	} else {
-		//Serial.println("TEST");
-		driver.change_motor(MOTOR3);
-		drv_3.setMode(DRV2605_MODE_REALTIME); 
+		Serial.println("CHANGING TO REALTIME");
+		driver.tcas_set_multi(first);
+		drv_1.setMode(DRV2605_MODE_INTTRIG); 
+		delay(300);
+		driver.tcas_set_multi(second);
+		drv_1.setMode(DRV2605_MODE_INTTRIG); 
+		delay(300);
+		driver.tcas_set_multi(third);
+		drv_1.setMode(DRV2605_MODE_INTTRIG); 
+		delay(300);
+		driver.tcas_set_multi(fourth);
+		drv_1.setMode(DRV2605_MODE_INTTRIG); 
+		delay(300);
+		driver.tcas_set_multi(fifth);
+		drv_1.setMode(DRV2605_MODE_INTTRIG); 
+		delay(300);
+		driver.tcas_set_multi(sixth);
+		drv_1.setMode(DRV2605_MODE_INTTRIG); 
+		delay(300);
+		driver.change_motor(MOTOR12);
+		drv_1.setMode(DRV2605_MODE_INTTRIG); 
+		delay(300);
+		Serial.println("Done");
 	}
 
 }
 
+/**************************************************************************/
+/*!
+  @brief Will send a go command to all motors that currently have a function
+		writen to them
+  @param pause if go will pause directly after then 1 else 0
+*/
+/**************************************************************************/
 void processGo(int pause){
-		//Serial.println("\n Firing Motors");
+		Serial.println("\n Firing Motors");
 		
 		global_motors_set[global_motor_pos] = -1;
-		// Serial.println("\n Motors Set");
-		// for (int i = 0; i < 13; i++)
-		// {
-		// 	Serial.print(global_motors_set[i]);
-		// }
+		Serial.println("\n Motors Set");
+		for (int i = 0; i < 13; i++)
+		{
+			Serial.print(global_motors_set[i]);
+		}
 
 		Serial.println();
 		set_multi(0,global_motors_set);
 		driver.go_multi(global_motors_set, drv_0);
-		while((drv_0.readRegister8(DRV2605_REG_GO)  & 0x01)!=0){}
+		//while((drv_5.readRegister8(DRV2605_REG_GO)  & 0x01)!=0){}
 		
 		//Clear Set motors
 		for(int i = 0; i < 14; i++){
@@ -196,14 +277,22 @@ void processGo(int pause){
 		motor_10_pos = 0;
 		motor_11_pos = 0;
 		motor_12_pos = 0;
+
 		if(!pause){
 			delay(250);
 		}
 }
 
+/**************************************************************************/
+/*!
+  @brief Process information from a go command
+  @param data Contents of the pause command
+*/
+/**************************************************************************/
 void processPause(int* data){
 	processGo(1);
 	int pause_time = 0;
+
 	for(int i = 0; i < 4; i ++){
 		pause_time += data[i+1] << (i * 8);
 	}
@@ -211,6 +300,12 @@ void processPause(int* data){
 	delay(pause_time);
 }
 
+/**************************************************************************/
+/*!
+  @brief Process information from a real time command
+  @param data Contents of the real time command
+*/
+/**************************************************************************/
 void processRealTime(int* data){
 	Serial.print("\n The Motor Number is:");
 	Serial.println(data[1]);
@@ -222,10 +317,16 @@ void processRealTime(int* data){
 
 	Serial.print("\n The Intensity is:");
 	Serial.println(data[2]);
-	drv_3.setRealtimeValue(data[2]);
+	driver_list[current_real_time_motor]->setRealtimeValue(data[2]);
 }
 
 
+/**************************************************************************/
+/*!
+  @brief Process information from a pre defined command
+  @param data Contents of the pre defined command
+*/
+/**************************************************************************/
 void processPreDefined(int* data){
 	int motor_pos = 0;
 	int motors[14], first[8] = {0}, second[8]= {0};
@@ -235,13 +336,11 @@ void processPreDefined(int* data){
 	for(int i=0;firstint>0;i++){    
 		first[i]=firstint%2;    
 		firstint=firstint/2;
-		Serial.print(first[i]);    
 	} 
 
 	for(int i=0;secondint>0;i++){    
 		second[i]=secondint%2;    
 		secondint=secondint/2;   
-		Serial.print(second[i]);   
 	} 
 
 	for(int i  = 0; i<8; i++){
@@ -284,7 +383,15 @@ void processPreDefined(int* data){
 }
 
 
-
+/**************************************************************************/
+/*!
+  @brief Process information from a serial block of data. Will break into
+		commands and then call functions to execute them
+  @param data Contents of the data block
+  @param size_of_data size of bytes in data block
+  
+*/
+/**************************************************************************/
 void processSerialBlock(int* data, int size_of_data){
 	//2D Block to pack data into
 	int data_block [size_of_data][10];
@@ -336,8 +443,6 @@ void processSerialBlock(int* data, int size_of_data){
 
 	//Execute data blocks
 	for(int i = 0; i < command_num; i++){
-		Serial.print("Poistion in loop : ");
-		Serial.println(i);
 		if(data_block[i][0] == PreDefinedType){
 			if(current_vibration_mode == PRE_DEFINED){
 				Serial.println("Pre Def Type");
@@ -368,20 +473,15 @@ void processSerialBlock(int* data, int size_of_data){
 			
 			if(num_loops == 0 && end_loop != i){
 				num_loops = data_block[i][1] - 1;
-				Serial.print("NUMBER OF LOOPS ");
-				Serial.println(num_loops);
 				end_loop = i;
 				i = start_loop-1;
 				processGo(1);
 
 			} else if (num_loops == 0 && end_loop == i){
-				Serial.println("End of Loop ");
 				start_loop = i;
 
 			} else if (num_loops > 0 && end_loop == i){
-				Serial.print("Number of loops left ");
 				num_loops --;
-				Serial.println(num_loops);
 				i = start_loop-1;
 				processGo(1);
 			} 
@@ -390,10 +490,15 @@ void processSerialBlock(int* data, int size_of_data){
 }  
 
 
-/*
- * BLE PROCESING
- */
-
+/**************************************************************************/
+/*!
+  @brief Process information from a BLE block of data. Will break into
+		commands and then call functions to execute them. 
+  @param data Contents of the data block
+  @param data_size size of bytes in data block
+  
+*/
+/**************************************************************************/
 void processBLEBlock(byte* data, int data_size){
 	uint8_t current_data = 0;
 	int* ble_data_to_process;
@@ -447,6 +552,16 @@ void processBLEBlock(byte* data, int data_size){
 
 }
 
+
+/**************************************************************************/
+/*!
+  @brief This is a callback function that will be called apon reciving BLE 
+  		data 
+  @param central Device connected to BLE 'Board'
+  @param characteristic The characteristic data was writen to
+  
+*/
+/**************************************************************************/
 void switchCharacteristicWritten(BLEDevice central, BLECharacteristic characteristic) {
 	int ble_data_size = 256;
 	//char* ble_data;
@@ -463,6 +578,11 @@ void switchCharacteristicWritten(BLEDevice central, BLECharacteristic characteri
 	processBLEBlock(ble_data, num_read);
 }
 
+/**************************************************************************/
+/*!
+  @brief Setup BLE   
+*/
+/**************************************************************************/
 void bluetooth_setup(void){
 
   if (!BLE.begin()) {
@@ -490,13 +610,121 @@ void bluetooth_setup(void){
 
   Serial.println(switchCharacteristic);
 
-  Serial.println("BLE VTF Peripheral");
+  Serial.println("BLE VTF Peripheral Set");
+}
+
+/**************************************************************************/
+/*!
+  @brief Setup all motors. Will all start in PRE_DEFINED mode   
+*/
+/**************************************************************************/
+void motor_setup(void){
+	driver.change_motor(MOTOR0);
+    drv_0.begin();
+    drv_0.useLRA();
+	drv_0.selectLibrary(6);
+    drv_0.setMode(DRV2605_MODE_INTTRIG); 
+    drv_0.setWaveform(0, 0);
+	drv_0.go();
+
+	driver.change_motor(MOTOR1);
+    drv_1.begin();
+    drv_1.useLRA();
+	drv_1.selectLibrary(6);
+    drv_1.setMode(DRV2605_MODE_INTTRIG); 
+    drv_1.setWaveform(0, 0);
+	drv_1.go();
+
+	driver.change_motor(MOTOR2);
+    drv_2.begin();
+    drv_2.useLRA();
+	drv_2.selectLibrary(6);
+    drv_2.setMode(DRV2605_MODE_INTTRIG); 
+    drv_2.setWaveform(0, 0);
+	drv_2.go();
+
+	driver.change_motor(MOTOR3);
+    drv_3.begin();
+	drv_3.selectLibrary(1);
+    drv_3.setMode(DRV2605_MODE_INTTRIG); 
+    drv_3.setWaveform(0, 0);
+	drv_3.go();
+
+	driver.change_motor(MOTOR4);
+    drv_4.begin();
+	drv_4.selectLibrary(1);
+    drv_4.setMode(DRV2605_MODE_INTTRIG); 
+    drv_4.setWaveform(0, 0);
+	drv_4.go();
+
+	driver.change_motor(MOTOR5);
+    drv_5.begin();
+    drv_5.useLRA();
+	drv_5.selectLibrary(6);
+    drv_5.setMode(DRV2605_MODE_INTTRIG); 
+    drv_5.setWaveform(0, 0);
+	drv_5.go();
+
+	driver.change_motor(MOTOR6);
+    drv_6.begin();
+    drv_6.useLRA();
+	drv_6.selectLibrary(6);
+    drv_6.setMode(DRV2605_MODE_INTTRIG); 
+    drv_6.setWaveform(0, 0);
+	drv_6.go();
+
+	driver.change_motor(MOTOR7);
+    drv_7.begin();
+    drv_7.useLRA();
+	drv_7.selectLibrary(6);
+    drv_7.setMode(DRV2605_MODE_INTTRIG); 
+    drv_7.setWaveform(0, 0);
+	drv_7.go();
+
+	driver.change_motor(MOTOR8);
+    drv_8.begin();
+	drv_8.selectLibrary(1);
+    drv_8.setMode(DRV2605_MODE_INTTRIG); 
+    drv_8.setWaveform(0, 0);
+	drv_8.go();
+
+	driver.change_motor(MOTOR9);
+    drv_9.begin();
+	drv_9.selectLibrary(1);
+    drv_9.setMode(DRV2605_MODE_INTTRIG); 
+    drv_9.setWaveform(0, 0);
+	drv_9.go();
+	
+	driver.change_motor(MOTOR10);
+    drv_10.begin();
+    drv_10.useLRA();
+	drv_10.selectLibrary(6);
+    drv_10.setMode(DRV2605_MODE_INTTRIG); 
+    drv_10.setWaveform(0, 0);
+	drv_10.go();
+
+	driver.change_motor(MOTOR11);
+    drv_11.begin();
+    drv_11.useLRA();
+	drv_11.selectLibrary(6);
+    drv_11.setMode(DRV2605_MODE_INTTRIG); 
+    drv_11.setWaveform(0, 0);
+	drv_11.go();
+
+	driver.change_motor(MOTOR12);
+    drv_12.begin();
+    drv_12.useLRA();
+	drv_12.selectLibrary(6);
+    drv_12.setMode(DRV2605_MODE_INTTRIG); 
+    drv_12.setWaveform(0, 0);
+	drv_12.go();
+
 }
 
 void setup() {
   // put your setup code here, to run once:
   	Serial.begin(9600);
-	while (!Serial);
+	//while (!Serial);
 	Serial.println("Haptic Motor Driver test");
 	delay(1000);
 
@@ -506,22 +734,7 @@ void setup() {
 
 	rgb_setup();
 	bluetooth_setup();
-
-	//driver.LRA_setup(MOTOR1,drv_1);
-	driver.change_motor(MOTOR0);
-    drv_0.begin();
-    drv_0.useLRA();
-	drv_0.selectLibrary(6);
-    drv_0.setMode(DRV2605_MODE_INTTRIG); 
-    drv_0.setWaveform(0, 0);
-	drv_0.go();
-
-	driver.change_motor(MOTOR2);
-    drv_2.begin();
-	drv_2.selectLibrary(1);
-    drv_2.setMode(DRV2605_MODE_INTTRIG); 
-    drv_2.setWaveform(0, 0);
-	drv_2.go();
+	motor_setup();	
 
 	Serial.println("Setup Done");
   
@@ -537,16 +750,21 @@ void loop() {
 	int getting_data = 0;
 	int data_pos = 0;
 	int* data_to_process;
-	char* ble_data;
 	data_to_process = (int*)malloc(sizeof(int) * buffer);
-	ble_data = (char*)malloc(sizeof(char) * 512*8);
-	int ble_data_size = 512;
 
-	driver.change_motor(MOTOR0);
-	drv_0.setWaveform(0, 1);
-	drv_0.setWaveform(1, 0);
-	drv_0.go();
-	delay(250);
+	// int all_motors[14] = {0,1,2,-1};
+	// for(int i = 0; i<3;i++){
+	// 	if(driver.is_LRA(i)){
+	// 		Serial.print("Setting motor: ");
+	// 		Serial.println(i);
+	// 		driver.change_motor(i);
+	// 		driver_list[i]->setWaveform(0, 1);
+	// 		driver_list[i]->setWaveform(1, 0);
+	// 		delay(250);
+	// 	}
+	// }
+	// driver.tcas_set_multi(all_motors);
+	// drv_0.go();
 
 	
 	
@@ -565,43 +783,7 @@ void loop() {
 
 			// while the central is still connected to peripheral:
 			while (central.connected()) {
-			// if the remote device wrote to the characteristic,
-			// use the value to control the LED:
 			
-			//if (switchCharacteristic.written()) {
-				
-			// 	switchCharacteristic.readValue(ble_data,ble_data_size);
-			// 	Serial.println("BLE DATA REVIVED");
-			// 	processBLEBlock(ble_data);
-
-
-				// switch (switchCharacteristic.value()) {   // any value other than 0
-				// 	case 01:
-				// 		Serial.println("Red LED on");
-				// 		digitalWrite(LEDR, LOW);            // will turn the LED on
-				// 		digitalWrite(LEDG, HIGH);         // will turn the LED off
-				// 		digitalWrite(LEDB, HIGH);         // will turn the LED off
-				// 		break;
-				// 	case 02:
-				// 		Serial.println("Green LED on");
-				// 		digitalWrite(LEDR, HIGH);         // will turn the LED off
-				// 		digitalWrite(LEDG, LOW);        // will turn the LED on
-				// 		digitalWrite(LEDB, HIGH);        // will turn the LED off
-				// 		break;
-				// 	case 03:
-				// 		Serial.println("Blue LED on");
-				// 		digitalWrite(LEDR, HIGH);         // will turn the LED off
-				// 		digitalWrite(LEDG, HIGH);       // will turn the LED off
-				// 		digitalWrite(LEDB, LOW);         // will turn the LED on
-				// 		break;
-				// 	default:
-				// 		Serial.println(F("LEDs off"));
-				// 		digitalWrite(LEDR, HIGH);          // will turn the LED off
-				// 		digitalWrite(LEDG, HIGH);        // will turn the LED off
-				// 		digitalWrite(LEDB, HIGH);         // will turn the LED off
-				// 		break;
-				// 	}
-				//}
 			}
 		} else {
 			digitalWrite(LED_BUILTIN, LOW); 
