@@ -29,7 +29,9 @@ void vtf_driver::change_motor(int motorNum){
     Wire.write(1 << get_tcas_port(motorNum));
     error = Wire.endTransmission(get_tcas(motorNum));
     if (error) {
-		Serial.print("Error occured when writing to ");
+        Serial.print("Error NUmber:");
+        Serial.print(error);
+		Serial.print(" occured when writing to ");
         if(get_tcas(motorNum) == TCAADDR0){
             Serial.println("TCAADDR0");
         } else {

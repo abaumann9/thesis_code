@@ -6,6 +6,8 @@
 #include "Adafruit_DRV2605.h"
 #include "vtf_driver.h"
 #include <stdint.h>
+#include "Arduino_LSM9DS1.h"
+#include <MadgwickAHRS.h>
 
 // BLE Service that is advertised
 BLEService vtfService("d2411652-234a-11ec-9621-0242ac130002"); // BLE LED Service
@@ -22,6 +24,7 @@ BLECharacteristic switchCharacteristic("b8aff320-234a-11ec-9621-0242ac130002",BL
 /* Define the type of message being sent over serial or BLE*/
 #define PreDefinedType 		0x50
 #define RealTimeType 		0x52
+#define DemoType			0x44
 #define GoType 				0x47
 #define PauseType 			0x53
 #define LoopType 			0x4C
@@ -33,8 +36,14 @@ BLECharacteristic switchCharacteristic("b8aff320-234a-11ec-9621-0242ac130002",BL
 #define EndCommand 			0x78
 
 /* VIBRATION TYPES */
-#define PRE_DEFINED 0
-#define REAL_TIME 1
+#define PRE_DEFINED 		0
+#define REAL_TIME 			1
+#define DEMO				2
+
+/*DEMO NUMBERS*/
+#define Demo1				0
+#define Demo2				1
+int current_demo_number = 0;
 
 /* MOTOR DRIVER INSTANCES */
 Adafruit_DRV2605 drv_0;
@@ -75,6 +84,10 @@ int motor_12_pos = 0;
 /* GLOBAL VIBRATION MODE*/
 int current_vibration_mode = PRE_DEFINED;
 int current_real_time_motor = 40;
+
+/*Accelerometer Info*/
+Madgwick filter;
+const float sensorRate = 104.00;
 
 
 /**************************************************************************/
@@ -300,6 +313,138 @@ void processPause(int* data){
 	delay(pause_time);
 }
 
+
+void run_demo(int demo_num){
+
+	int vib_intensity = 0;
+
+	int left_motors[3] = {3,4,-1};
+	int right_motors[3] = {8,9,-1};
+
+	int roll_deadzone = 10;
+	int current_roll_dirrection = 0;
+	float max_roll_right = 90;
+	float max_roll_left = 90;
+	
+	int front_motors[3] = {3,8,-1};
+	int back_motors[3] = {4,9,-1};	
+
+	int pitch_deadzone = 10;
+	int current_pitch_dirrection = 0;
+	float max_pitch_back = 90;
+	float max_pitch_front= 90;
+
+	float xAcc, yAcc, zAcc;
+	float xGyro, yGyro, zGyro;
+	float roll, pitch, heading;
+
+
+	if(demo_num == Demo1){
+		//Gyroscope Processing//
+		if (IMU.gyroscopeAvailable() && IMU.accelerationAvailable()) {
+			IMU.readAcceleration(xAcc, yAcc, zAcc);
+        	IMU.readGyroscope(xGyro, yGyro, zGyro);
+			filter.updateIMU(xGyro, yGyro, zGyro, xAcc, yAcc, zAcc);
+			roll = filter.getRoll();
+			//pitch = filter.getPitch();
+			//heading = filter.getYaw();
+			//Serial.print("Roll: ");
+			Serial.println(roll);
+			// Serial.print(" Pitch: ");
+			// Serial.print(pitch);
+			// Serial.print(" Heding: ");
+			// Serial.println(heading);
+
+			if(roll>0){
+				if(roll>roll_deadzone){
+					if(current_roll_dirrection != 1){
+						// driver.tcas_set_multi(left_motors);
+					}
+					vib_intensity = round((roll/max_roll_left)*255);
+					drv_1.setRealtimeValue(vib_intensity);
+					Serial.print("Left motor Intensity: ");
+					Serial.println(vib_intensity);
+				}
+			} else if(roll<0){
+				if(roll<(-1*roll_deadzone)){
+					if(current_roll_dirrection != 0){
+						// driver.tcas_set_multi(right_motors);
+					}
+					vib_intensity = abs(round((roll/max_roll_right)*255));
+					drv_1.setRealtimeValue(vib_intensity);
+						Serial.print("Right motor Intensity: ");
+					Serial.println(vib_intensity);
+				}
+			}
+			
+		}
+	} else if(demo_num == Demo2){
+		if (IMU.gyroscopeAvailable() && IMU.accelerationAvailable()) {
+			IMU.readAcceleration(xAcc, yAcc, zAcc);
+        	IMU.readGyroscope(xGyro, yGyro, zGyro);
+			filter.updateIMU(xGyro, yGyro, zGyro, xAcc, yAcc, zAcc);
+			pitch = filter.getPitch();
+
+			if(pitch>0){
+				if(pitch>pitch_deadzone){
+					if(current_pitch_dirrection != 1){
+						// driver.tcas_set_multi(back_motors);
+					}
+					vib_intensity = round((pitch/max_pitch_back)*255);
+					drv_1.setRealtimeValue(vib_intensity);
+					Serial.print("Back motor Intensity: ");
+					Serial.println(vib_intensity);
+				}
+			} else if(pitch<0){
+				if(pitch<(-1*pitch_deadzone)){
+					if(current_pitch_dirrection != 0){
+						// driver.tcas_set_multi(front_motors);
+					}
+					vib_intensity = abs(round((pitch/max_pitch_front)*255));
+					drv_1.setRealtimeValue(vib_intensity);
+						Serial.print("Front motor Intensity: ");
+					Serial.println(vib_intensity);
+				} if(pitch >= max_pitch_front){
+					// driver.tcas_set_multi(front_motors);
+					// set_multi()
+					//processGo
+				}
+			}
+		}
+	}
+}
+
+
+/**************************************************************************/
+/*!
+  @brief Begin a given demo
+*/
+/**************************************************************************/
+void processDemo(int* data){
+	current_demo_number=1;
+	int first[3] = {3,4,-1};
+	int second[3] = {8,9,-1};
+	if(data[1] == Demo1){
+		Serial.println("BEGIN DEMO 1");
+		current_demo_number = Demo1;
+		driver.tcas_set_multi(first);
+		drv_1.setMode(DRV2605_MODE_REALTIME); 
+		delay(300);
+		driver.tcas_set_multi(second);
+		drv_1.setMode(DRV2605_MODE_REALTIME); 
+		delay(300);
+	} else if(data[1] == Demo2){
+		Serial.println("BEGIN DEMO 2");
+		current_demo_number = Demo2;
+		driver.tcas_set_multi(first);
+		drv_1.setMode(DRV2605_MODE_REALTIME); 
+		delay(300);
+		driver.tcas_set_multi(second);
+		drv_1.setMode(DRV2605_MODE_REALTIME); 
+		delay(300);
+	}
+}
+
 /**************************************************************************/
 /*!
   @brief Process information from a real time command
@@ -385,14 +530,14 @@ void processPreDefined(int* data){
 
 /**************************************************************************/
 /*!
-  @brief Process information from a serial block of data. Will break into
+  @brief Process information from a block of data. Will break into
 		commands and then call functions to execute them
   @param data Contents of the data block
   @param size_of_data size of bytes in data block
   
 */
 /**************************************************************************/
-void processSerialBlock(int* data, int size_of_data){
+void processBlock(int* data, int size_of_data){
 	//2D Block to pack data into
 	int data_block [size_of_data][10];
 
@@ -462,6 +607,9 @@ void processSerialBlock(int* data, int size_of_data){
 				current_vibration_mode = REAL_TIME;
 				processRealTime(data_block[i]);
 			}
+		}else if(data_block[i][0]  == DemoType){
+			current_vibration_mode = DEMO;
+			processDemo(data_block[i]);
 		
 		} else if (data_block[i][0]  == GoType){
 			processGo(0);
@@ -492,8 +640,8 @@ void processSerialBlock(int* data, int size_of_data){
 
 /**************************************************************************/
 /*!
-  @brief Process information from a BLE block of data. Will break into
-		commands and then call functions to execute them. 
+  @brief Process information from a BLE block of data. Will send to  
+		processBlock for execution
   @param data Contents of the data block
   @param data_size size of bytes in data block
   
@@ -522,7 +670,7 @@ void processBLEBlock(byte* data, int data_size){
 			if(current_data == EndBlock){
 				endcnt ++;
 				if(endcnt == 2){
-					processSerialBlock(ble_data_to_process, data_pos);
+					processBlock(ble_data_to_process, data_pos);
 					getting_data = 0;
 					data_pos = 0;
 					endcnt = 0;
@@ -612,6 +760,15 @@ void bluetooth_setup(void){
 
   Serial.println("BLE VTF Peripheral Set");
 }
+
+void imu_setup(void){
+	if (!IMU.begin()) {
+    	Serial.println("Failed to initialize IMU!");
+    	while (1);
+	}
+	filter.begin(sensorRate);
+}
+
 
 /**************************************************************************/
 /*!
@@ -724,7 +881,7 @@ void motor_setup(void){
 void setup() {
   // put your setup code here, to run once:
   	Serial.begin(9600);
-	//while (!Serial);
+	while (!Serial);
 	Serial.println("Haptic Motor Driver test");
 	delay(1000);
 
@@ -732,9 +889,10 @@ void setup() {
 	Wire.setClock(100000);
 	Wire.setTimeout(10000);
 
-	rgb_setup();
-	bluetooth_setup();
+	//rgb_setup();
+	//bluetooth_setup();
 	motor_setup();	
+	//imu_setup();
 
 	Serial.println("Setup Done");
   
@@ -743,6 +901,9 @@ void setup() {
 void loop() {
 	// put your main code here, to run repeatedly:
 	//Serial.println("Setup Done");
+	float xAcc, yAcc, zAcc;
+	float xGyro, yGyro, zGyro;
+	float roll, pitch, heading;
 	int incomingByte = 0;
 	int buffer = 20;
 	int start_cnt = 0;
@@ -752,22 +913,6 @@ void loop() {
 	int* data_to_process;
 	data_to_process = (int*)malloc(sizeof(int) * buffer);
 
-	// int all_motors[14] = {0,1,2,-1};
-	// for(int i = 0; i<3;i++){
-	// 	if(driver.is_LRA(i)){
-	// 		Serial.print("Setting motor: ");
-	// 		Serial.println(i);
-	// 		driver.change_motor(i);
-	// 		driver_list[i]->setWaveform(0, 1);
-	// 		driver_list[i]->setWaveform(1, 0);
-	// 		delay(250);
-	// 	}
-	// }
-	// driver.tcas_set_multi(all_motors);
-	// drv_0.go();
-
-	
-	
 	while(1){
 
 		//BLE PROCESSING//
@@ -776,19 +921,32 @@ void loop() {
 
 		// if a central is connected to peripheral:
 		if (central) {
-			Serial.print("Connected to central: ");
-			// print the central's MAC address:
-			Serial.println(central.address());
 			digitalWrite(LED_BUILTIN, HIGH);            // turn on the LED to indicate the connection
 
 			// while the central is still connected to peripheral:
-			while (central.connected()) {
-			
+			if(central.connected()) {
+				digitalWrite(LED_BUILTIN, HIGH);
 			}
 		} else {
 			digitalWrite(LED_BUILTIN, LOW); 
 		}
 
+		//Gyroscope Processing//
+		// if (IMU.gyroscopeAvailable() && IMU.accelerationAvailable()) {
+		// 	IMU.readAcceleration(xAcc, yAcc, zAcc);
+        // 	IMU.readGyroscope(xGyro, yGyro, zGyro);
+		// 	filter.updateIMU(xGyro, yGyro, zGyro, xAcc, yAcc, zAcc);
+		// 	roll = filter.getRoll();
+		// 	pitch = filter.getPitch();
+		// 	heading = filter.getYaw();
+		// 	Serial.print("Roll: ");
+		// 	Serial.print(roll);
+		// 	Serial.print(" Pitch: ");
+		// 	Serial.print(pitch);
+		// 	Serial.print(" Heding: ");
+		// 	Serial.println(heading);
+			
+		// }
 		
 
 
@@ -801,7 +959,7 @@ void loop() {
 			if(incomingByte == EndBlock){
 				endcnt ++;
 				if(endcnt == 2){
-					processSerialBlock(data_to_process, data_pos);
+					processBlock(data_to_process, data_pos);
 					getting_data = 0;
 					data_pos = 0;
 					endcnt = 0;
@@ -832,7 +990,13 @@ void loop() {
 
 		incomingByte = 0;
 		delay(1);
+
+		// if(current_vibration_mode == DEMO){
+		// run_demo(current_demo_number);
+		// }
 			
 	}
+
+	
 	
 }
