@@ -7,7 +7,6 @@
 #include "vtf_driver.h"
 #include <stdint.h>
 #include "Arduino_LSM9DS1.h"
-#include <MadgwickAHRS.h>
 
 // BLE Service that is advertised
 BLEService vtfService("d2411652-234a-11ec-9621-0242ac130002"); // BLE LED Service
@@ -43,7 +42,7 @@ BLECharacteristic switchCharacteristic("b8aff320-234a-11ec-9621-0242ac130002",BL
 /*DEMO NUMBERS*/
 #define Demo1				0
 #define Demo2				1
-int current_demo_number = 0;
+int current_demo_number = 	0;
 
 /* MOTOR DRIVER INSTANCES */
 Adafruit_DRV2605 drv_0;
@@ -84,10 +83,6 @@ int motor_12_pos = 0;
 /* GLOBAL VIBRATION MODE*/
 int current_vibration_mode = PRE_DEFINED;
 int current_real_time_motor = 40;
-
-/*Accelerometer Info*/
-Madgwick filter;
-const float sensorRate = 104.00;
 
 
 /**************************************************************************/
@@ -131,7 +126,7 @@ void set_multi(int pre_programmed_num, int *motors){
 			motor_1_pos++;
             
         } else if (motors[i] == 2){
-            drv_2.setWaveform(motor_3_pos, (pre_programmed_num));
+            drv_2.setWaveform(motor_2_pos, (pre_programmed_num));
 			motor_2_pos++;
         
         } else if (motors[i] == 3){
@@ -194,56 +189,42 @@ void switchVibrationType(int vibration_type){
 	int fourth[3] = {6,7,-1};
 	int fifth[3] = {8,9,-1};
 	int sixth[3] = {10,11,-1};
-
+	int seventh[2] = {12,-1};
 
 	if(vibration_type == REAL_TIME){
 		Serial.println("CHANGING TO REALTIME");
 		driver.tcas_set_multi(first);
 		drv_1.setMode(DRV2605_MODE_REALTIME); 
-		delay(300);
 		driver.tcas_set_multi(second);
 		drv_1.setMode(DRV2605_MODE_REALTIME); 
-		delay(300);
 		driver.tcas_set_multi(third);
 		drv_1.setMode(DRV2605_MODE_REALTIME); 
-		delay(300);
 		driver.tcas_set_multi(fourth);
 		drv_1.setMode(DRV2605_MODE_REALTIME); 
-		delay(300);
 		driver.tcas_set_multi(fifth);
 		drv_1.setMode(DRV2605_MODE_REALTIME); 
-		delay(300);
 		driver.tcas_set_multi(sixth);
 		drv_1.setMode(DRV2605_MODE_REALTIME); 
-		delay(300);
-		driver.change_motor(MOTOR12);
+		driver.tcas_set_multi(seventh);
 		drv_1.setMode(DRV2605_MODE_REALTIME); 
-		delay(300);
 		Serial.println("Done");
 	
 	} else {
 		Serial.println("CHANGING TO REALTIME");
 		driver.tcas_set_multi(first);
 		drv_1.setMode(DRV2605_MODE_INTTRIG); 
-		delay(300);
 		driver.tcas_set_multi(second);
 		drv_1.setMode(DRV2605_MODE_INTTRIG); 
-		delay(300);
 		driver.tcas_set_multi(third);
 		drv_1.setMode(DRV2605_MODE_INTTRIG); 
-		delay(300);
 		driver.tcas_set_multi(fourth);
 		drv_1.setMode(DRV2605_MODE_INTTRIG); 
-		delay(300);
 		driver.tcas_set_multi(fifth);
 		drv_1.setMode(DRV2605_MODE_INTTRIG); 
-		delay(300);
 		driver.tcas_set_multi(sixth);
 		drv_1.setMode(DRV2605_MODE_INTTRIG); 
-		delay(300);
-		driver.change_motor(MOTOR12);
+		driver.tcas_set_multi(seventh);
 		drv_1.setMode(DRV2605_MODE_INTTRIG); 
-		delay(300);
 		Serial.println("Done");
 	}
 
@@ -313,101 +294,121 @@ void processPause(int* data){
 	delay(pause_time);
 }
 
-
+/**************************************************************************/
+/*!
+  @brief Demo Code to show how data from a sensor can be used to drive a motor
+  @param demo_num Number of the Demo to Run
+*/
+/**************************************************************************/
 void run_demo(int demo_num){
 
 	int vib_intensity = 0;
 
+	//Define which motors to control
 	int left_motors[3] = {3,4,-1};
 	int right_motors[3] = {8,9,-1};
-
-	int roll_deadzone = 10;
-	int current_roll_dirrection = 0;
-	float max_roll_right = 90;
-	float max_roll_left = 90;
-	
 	int front_motors[3] = {3,8,-1};
 	int back_motors[3] = {4,9,-1};	
+
+	//Define Paramaters for proportional vibration
+	int roll_deadzone = 30;
+	float max_roll_right = 90;
+	float max_roll_left = 90;
+	int current_roll_dirrection = 0;
 
 	int pitch_deadzone = 10;
 	int current_pitch_dirrection = 0;
 	float max_pitch_back = 90;
 	float max_pitch_front= 90;
 
+	//Values to save roll and pitch data
 	float xAcc, yAcc, zAcc;
-	float xGyro, yGyro, zGyro;
-	float roll, pitch, heading;
-
-
+	float roll, pitch;
+	
+	/*
+	 * Demo 1 takes acceleration data from the IMU in the nano 33
+	 * and calculates the current angle of tilt of the device to 
+	 * drive ERM vibration proportional to the angle of rotation 
+	 * From the centre
+	 */
 	if(demo_num == Demo1){
-		//Gyroscope Processing//
-		if (IMU.gyroscopeAvailable() && IMU.accelerationAvailable()) {
-			IMU.readAcceleration(xAcc, yAcc, zAcc);
-        	IMU.readGyroscope(xGyro, yGyro, zGyro);
-			filter.updateIMU(xGyro, yGyro, zGyro, xAcc, yAcc, zAcc);
-			roll = filter.getRoll();
-			//pitch = filter.getPitch();
-			//heading = filter.getYaw();
-			//Serial.print("Roll: ");
-			Serial.println(roll);
-			// Serial.print(" Pitch: ");
-			// Serial.print(pitch);
-			// Serial.print(" Heding: ");
-			// Serial.println(heading);
+		
+		while(Serial.available() == 0){
+			
+			if (IMU.accelerationAvailable()) {
+				IMU.readAcceleration(xAcc, yAcc, zAcc);
+			
+				if(yAcc > 0.1){
+					yAcc = 100*yAcc;
+					roll = map(yAcc, 0, 97, 0, 90);
 
-			if(roll>0){
-				if(roll>roll_deadzone){
-					if(current_roll_dirrection != 1){
-						// driver.tcas_set_multi(left_motors);
+					if(roll > roll_deadzone){									
+						if(current_roll_dirrection != 1){
+							driver.tcas_set_multi(left_motors);						//Select which motors to vibrate
+							current_roll_dirrection = 1;
+						}
+						vib_intensity = round((roll/max_roll_left)*127);
+						drv_3.setRealtimeValue(vib_intensity);						//Set the vibration level
+					} else {
+						drv_3.setRealtimeValue(0);
 					}
-					vib_intensity = round((roll/max_roll_left)*255);
-					drv_1.setRealtimeValue(vib_intensity);
-					Serial.print("Left motor Intensity: ");
-					Serial.println(vib_intensity);
-				}
-			} else if(roll<0){
-				if(roll<(-1*roll_deadzone)){
-					if(current_roll_dirrection != 0){
-						// driver.tcas_set_multi(right_motors);
+
+				} if(yAcc < -0.1){
+					yAcc = 100*yAcc;
+					roll = map(yAcc, 0, -100, 0, 90);
+
+					if(roll > roll_deadzone){
+						if(current_roll_dirrection != 0){
+							driver.tcas_set_multi(right_motors);					//Select which motors to vibrate
+							current_roll_dirrection = 0;
+						}
+						vib_intensity = abs(round((roll/max_roll_right)*127));
+						drv_8.setRealtimeValue(vib_intensity);						//Set the vibration level
+					} else {
+						drv_8.setRealtimeValue(0);
 					}
-					vib_intensity = abs(round((roll/max_roll_right)*255));
-					drv_1.setRealtimeValue(vib_intensity);
-						Serial.print("Right motor Intensity: ");
-					Serial.println(vib_intensity);
 				}
 			}
-			
 		}
-	} else if(demo_num == Demo2){
-		if (IMU.gyroscopeAvailable() && IMU.accelerationAvailable()) {
-			IMU.readAcceleration(xAcc, yAcc, zAcc);
-        	IMU.readGyroscope(xGyro, yGyro, zGyro);
-			filter.updateIMU(xGyro, yGyro, zGyro, xAcc, yAcc, zAcc);
-			pitch = filter.getPitch();
 
-			if(pitch>0){
-				if(pitch>pitch_deadzone){
-					if(current_pitch_dirrection != 1){
-						// driver.tcas_set_multi(back_motors);
+	} else if(demo_num == Demo2){
+		while(Serial.available() == 0){
+			if (IMU.accelerationAvailable()) {
+				IMU.readAcceleration(xAcc, yAcc, zAcc);
+				
+				if(xAcc > 0.1){
+					xAcc = 100*xAcc;
+					pitch = map(xAcc, 0, 97, 0, 90);
+
+					if(pitch>pitch_deadzone){
+						if(current_pitch_dirrection != 1){
+							driver.tcas_set_multi(front_motors);
+							current_pitch_dirrection = 1;
+						}
+						vib_intensity = abs(round((pitch/max_pitch_front)*127));
+						drv_3.setRealtimeValue(vib_intensity);
+
+					} else {
+						drv_3.setRealtimeValue(0);
 					}
-					vib_intensity = round((pitch/max_pitch_back)*255);
-					drv_1.setRealtimeValue(vib_intensity);
-					Serial.print("Back motor Intensity: ");
-					Serial.println(vib_intensity);
+
 				}
-			} else if(pitch<0){
-				if(pitch<(-1*pitch_deadzone)){
-					if(current_pitch_dirrection != 0){
-						// driver.tcas_set_multi(front_motors);
+					
+				if(xAcc < -0.1){
+					xAcc = 100*xAcc;
+					pitch = map(xAcc, 0, -100, 0, 90);
+				
+					if(pitch>pitch_deadzone){
+						if(current_pitch_dirrection != 0){
+							driver.tcas_set_multi(back_motors);
+							current_pitch_dirrection = 0;
+						}
+						vib_intensity = abs(round((pitch/max_pitch_back)*127));
+						drv_8.setRealtimeValue(vib_intensity);
+
+					} else {
+						drv_8.setRealtimeValue(0);
 					}
-					vib_intensity = abs(round((pitch/max_pitch_front)*255));
-					drv_1.setRealtimeValue(vib_intensity);
-						Serial.print("Front motor Intensity: ");
-					Serial.println(vib_intensity);
-				} if(pitch >= max_pitch_front){
-					// driver.tcas_set_multi(front_motors);
-					// set_multi()
-					//processGo
 				}
 			}
 		}
@@ -520,7 +521,16 @@ void processPreDefined(int* data){
 
 		already_set = 0;
 	}
-
+	Serial.print("DATA BLCOK INFO: First: ");
+	for(int i = 0; i<8; i++){
+		Serial.print(first[i]);
+	}
+	Serial.print(" Second: ");
+	for(int i = 0; i<8; i++){
+		Serial.print(second[i]);
+	}
+	Serial.print(" Data: ");
+	Serial.println(data[1]+1);
 	driver.tcas_set_multi(motors);
 
 
@@ -766,7 +776,7 @@ void imu_setup(void){
     	Serial.println("Failed to initialize IMU!");
     	while (1);
 	}
-	filter.begin(sensorRate);
+	
 }
 
 
@@ -776,105 +786,19 @@ void imu_setup(void){
 */
 /**************************************************************************/
 void motor_setup(void){
-	driver.change_motor(MOTOR0);
-    drv_0.begin();
-    drv_0.useLRA();
-	drv_0.selectLibrary(6);
-    drv_0.setMode(DRV2605_MODE_INTTRIG); 
-    drv_0.setWaveform(0, 0);
-	drv_0.go();
-
-	driver.change_motor(MOTOR1);
-    drv_1.begin();
-    drv_1.useLRA();
-	drv_1.selectLibrary(6);
-    drv_1.setMode(DRV2605_MODE_INTTRIG); 
-    drv_1.setWaveform(0, 0);
-	drv_1.go();
-
-	driver.change_motor(MOTOR2);
-    drv_2.begin();
-    drv_2.useLRA();
-	drv_2.selectLibrary(6);
-    drv_2.setMode(DRV2605_MODE_INTTRIG); 
-    drv_2.setWaveform(0, 0);
-	drv_2.go();
-
-	driver.change_motor(MOTOR3);
-    drv_3.begin();
-	drv_3.selectLibrary(1);
-    drv_3.setMode(DRV2605_MODE_INTTRIG); 
-    drv_3.setWaveform(0, 0);
-	drv_3.go();
-
-	driver.change_motor(MOTOR4);
-    drv_4.begin();
-	drv_4.selectLibrary(1);
-    drv_4.setMode(DRV2605_MODE_INTTRIG); 
-    drv_4.setWaveform(0, 0);
-	drv_4.go();
-
-	driver.change_motor(MOTOR5);
-    drv_5.begin();
-    drv_5.useLRA();
-	drv_5.selectLibrary(6);
-    drv_5.setMode(DRV2605_MODE_INTTRIG); 
-    drv_5.setWaveform(0, 0);
-	drv_5.go();
-
-	driver.change_motor(MOTOR6);
-    drv_6.begin();
-    drv_6.useLRA();
-	drv_6.selectLibrary(6);
-    drv_6.setMode(DRV2605_MODE_INTTRIG); 
-    drv_6.setWaveform(0, 0);
-	drv_6.go();
-
-	driver.change_motor(MOTOR7);
-    drv_7.begin();
-    drv_7.useLRA();
-	drv_7.selectLibrary(6);
-    drv_7.setMode(DRV2605_MODE_INTTRIG); 
-    drv_7.setWaveform(0, 0);
-	drv_7.go();
-
-	driver.change_motor(MOTOR8);
-    drv_8.begin();
-	drv_8.selectLibrary(1);
-    drv_8.setMode(DRV2605_MODE_INTTRIG); 
-    drv_8.setWaveform(0, 0);
-	drv_8.go();
-
-	driver.change_motor(MOTOR9);
-    drv_9.begin();
-	drv_9.selectLibrary(1);
-    drv_9.setMode(DRV2605_MODE_INTTRIG); 
-    drv_9.setWaveform(0, 0);
-	drv_9.go();
-	
-	driver.change_motor(MOTOR10);
-    drv_10.begin();
-    drv_10.useLRA();
-	drv_10.selectLibrary(6);
-    drv_10.setMode(DRV2605_MODE_INTTRIG); 
-    drv_10.setWaveform(0, 0);
-	drv_10.go();
-
-	driver.change_motor(MOTOR11);
-    drv_11.begin();
-    drv_11.useLRA();
-	drv_11.selectLibrary(6);
-    drv_11.setMode(DRV2605_MODE_INTTRIG); 
-    drv_11.setWaveform(0, 0);
-	drv_11.go();
-
-	driver.change_motor(MOTOR12);
-    drv_12.begin();
-    drv_12.useLRA();
-	drv_12.selectLibrary(6);
-    drv_12.setMode(DRV2605_MODE_INTTRIG); 
-    drv_12.setWaveform(0, 0);
-	drv_12.go();
+	driver.LRA_setup(MOTOR0, &drv_0, Default);
+	driver.LRA_setup(MOTOR1, &drv_1, Default);
+	driver.LRA_setup(MOTOR2, &drv_2, Default);
+	driver.ERM_setup(MOTOR3, &drv_3);
+	driver.ERM_setup(MOTOR4, &drv_4);
+	driver.LRA_setup(MOTOR5, &drv_5, Default);
+	driver.LRA_setup(MOTOR6, &drv_6, Default);
+	driver.LRA_setup(MOTOR7, &drv_7, Default);
+	driver.ERM_setup(MOTOR8, &drv_8);
+	driver.ERM_setup(MOTOR9, &drv_9);
+	driver.LRA_setup(MOTOR10, &drv_10, Default);
+	driver.LRA_setup(MOTOR11, &drv_11, Default);
+	driver.LRA_setup(MOTOR12, &drv_12, Default);
 
 }
 
@@ -889,10 +813,10 @@ void setup() {
 	Wire.setClock(100000);
 	Wire.setTimeout(10000);
 
-	//rgb_setup();
-	//bluetooth_setup();
+	rgb_setup();
+	bluetooth_setup();
 	motor_setup();	
-	//imu_setup();
+	imu_setup();
 
 	Serial.println("Setup Done");
   
@@ -953,6 +877,7 @@ void loop() {
 		//SERIAL PROCESSING//
 		if(Serial.available() > 0){
 			incomingByte = Serial.read();
+			Serial.println(incomingByte);
 		}
 
 		if(getting_data){
@@ -989,11 +914,6 @@ void loop() {
 		}
 
 		incomingByte = 0;
-		delay(1);
-
-		// if(current_vibration_mode == DEMO){
-		// run_demo(current_demo_number);
-		// }
 			
 	}
 

@@ -5,8 +5,6 @@
 
 Adafruit_DRV2605 drv;
 
-
-
 vtf_driver::vtf_driver() {}
 
 
@@ -29,9 +27,7 @@ void vtf_driver::change_motor(int motorNum){
     Wire.write(1 << get_tcas_port(motorNum));
     error = Wire.endTransmission(get_tcas(motorNum));
     if (error) {
-        Serial.print("Error NUmber:");
-        Serial.print(error);
-		Serial.print(" occured when writing to ");
+		Serial.print("Error occured when writing to ");
         if(get_tcas(motorNum) == TCAADDR0){
             Serial.println("TCAADDR0");
         } else {
@@ -126,33 +122,19 @@ void vtf_driver::tcas_set_multi(int *motors){
 
         }
     }
-    Serial.println("0x70 Add");
-    Serial.println(TCAADDR0_Addr, BIN);
-    Serial.println("0x74 Add");
-    Serial.println(TCAADDR1_Addr, BIN);
+    // Serial.println("0x70 Add");
+    // Serial.println(TCAADDR0_Addr, BIN);
+    // Serial.println("0x74 Add");
+    // Serial.println(TCAADDR1_Addr, BIN);
     
     Wire.beginTransmission(TCAADDR0);
     Wire.write(TCAADDR0_Addr);
-    error = Wire.endTransmission(TCAADDR0);
-    if (error) {
-		    Serial.println("Error occured when writing to TCAADDR0");
-		if (error == 5)
-            Serial.println("It was a timeout");
-            Serial.println();
-    }
-    
+    Wire.endTransmission(TCAADDR0);
 
     
 	Wire.beginTransmission(TCAADDR1);
 	Wire.write(TCAADDR1_Addr);
-	error1 = Wire.endTransmission(TCAADDR1); 
-    if (error1) {
-		    Serial.println("Error occured when writing to TCAADDR1");
-		if (error1 == 5)
-            Serial.println("It was a timeout");
-            Serial.println();
-    }
-
+	Wire.endTransmission(TCAADDR1); 
 }
 
 
@@ -234,71 +216,89 @@ uint8_t vtf_driver::get_tcas_port(int motorNum){
 /**************************************************************************/
 /*!
   @brief Setup an LRA using the DRV2605 Auto Calibrate. Will only work
-         with the ... LRA motor. Params must be changed for other motors
-  @param motorNum Motor to be setup
-  @param drv_x DRV2605 instance for given motorNum initiated in main
+         with the LV101040A LRA motor. Params must be changed for other motors
+  @param motorNum    Motor to be setup
+  @param drv_x       DRV2605 instance for given motorNum initiated in main
+  @param set_up_type Determains if Auto Calibration is attempted 
+                     or Default values are used
 
 */
 /**************************************************************************/
-void vtf_driver::LRA_setup(int motorNum, Adafruit_DRV2605 drv_x){
+void vtf_driver::LRA_setup(int motorNum, Adafruit_DRV2605* drv_x, int set_up_type){
+    // Serial.println("Starting AUTO Calibration");
     change_motor(motorNum);
-    drv_x.begin();
-    drv_x.useLRA();
-    // drv_x.writeRegister8(0x01, 0x00);     // out of standby
+    drv_x->begin();
+    drv_x->writeRegister8(0x01, 0x00);                                              // out of standby
 
-    // drv_x.writeRegister8(0x16, 0x63);                                               //Set RATED_VOLTAGE ->99
-    // drv_x.writeRegister8(0x17, 0xA1);                                               //Set OD_CLAMP (Max Allowed Voltage) ->99
+    drv_x->writeRegister8(DRV2605_REG_RATEDV, RatedVoltage);                        //Set RATED_VOLTAGE ->99
+    drv_x->writeRegister8(DRV2605_REG_CLAMPV, OverDriveVoltage);                    //Set OD_CLAMP (Max Allowed Voltage) ->161
 
-    // uint8_t feedback_val = 0;
-    // feedback_val |= (1 << 7);                                                       // Set LRA mode
-    // feedback_val |= (2 << 4);                                                       // Set Brake Factor to 2x
-    // feedback_val |= (2 << 2);                                                       // Set Loop Gain to high
-    // drv_x.writeRegister8(0x1A, feedback_val);
+    uint8_t feedback_val = 0;
+    feedback_val |= (1 << 7);                                                       // Set LRA mode
+    feedback_val |= (3 << 4);                                                       // Set Brake Factor to 4x
+    feedback_val |= (2 << 2);                                                       // Set Loop Gain to high
+    drv_x->writeRegister8(DRV2605_REG_FEEDBACK, feedback_val);
 
-    // //Control 1
-    // drv_x.writeRegister8(0x1B, (drv_x.readRegister8(0x1B) & 0xE0));                 //Clear DRIVE_TIME Bits
-    // drv_x.writeRegister8(0x1B, (drv_x.readRegister8(0x1B) | (0xB)));                //Set DRIVE_TIME 11
+    //Control 1
+    uint8_t control_1_val = 0;
+    control_1_val |= (1<<7);                                                        //Set Startup Boost
+    control_1_val |= (11<<0);                                                       //Set DRIVE_TIME 11    
+    drv_x->writeRegister8(DRV2605_REG_CONTROL1, control_1_val);
 
-    // //Control 2
-    // drv_x.writeRegister8(0x1C, (drv_x.readRegister8(0x1C) & 0xCF));                 //Clear SAMPLE_TIME Bits
-    // drv_x.writeRegister8(0x1C, (drv_x.readRegister8(0x1C) | (0x03<<4)));            //Set SAMPLE_TIME -> 3
+    //Control 2
+    uint8_t control_2_val = 0;
+    control_2_val |= (1<<7);                                                        //Set Bidirectional input mode
+    control_2_val |= (1<<6);                                                        //Set Brake Stabaliser
+    control_2_val |= (3<<4);                                                        //Set SAMPLE_TIME -> 300us
+    control_2_val |= (1<<2);                                                        //Set BLANKING_TIME
+    control_2_val |= (1<<0);                                                        //Set IDISS_TIME (Current Dissapate Time)
+    drv_x->writeRegister8(DRV2605_REG_CONTROL2, control_2_val);
 
-    // //Control 3
-    // drv_x.writeRegister8(0x1C, (drv_x.readRegister8(0x1C) & 0xF0));                 //Clear BLANKING_TIME & IDISS_TIME Bits
-    // drv_x.writeRegister8(0x1C, (drv_x.readRegister8(0x1C) | (1<<2)));               //Set BLANKING_TIME -> 1
-    // drv_x.writeRegister8(0x1C, (drv_x.readRegister8(0x1C) | (1<<0)));               //Set IDISS_TIME -> 1
-
-    // drv_x.writeRegister8(DRV2605_REG_MODE, 0x07);                                   //Auto Calibration Mode
-
-    // drv_x.writeRegister8(0x1E, (drv_x.readRegister8(0x1E) | (032<<4)));             //Set AUTO_CAL_TIME -> 3
-
-    // drv_x.go();
-    // int cnt = 0;
-    // while((drv_x.readRegister8(DRV2605_REG_GO)  & 0x01)!=0){
-    
-    //     delay(250);
-    //     cnt ++;
+    //Control 3
+    uint8_t control_3_val = 0;
+    control_3_val |= (2<<6);                                                        //Set NG_THRESH 4%
+    control_3_val |= (1<<5);                                                        //For ERMs (Not Important)
+    control_3_val |= (1<<0);                                                        //Disables Auto-resonance mode as this is a wideband LRA
+    drv_x->writeRegister8(DRV2605_REG_CONTROL3, control_3_val);
     
 
-    //     if(cnt > 20){
-    //         Serial.println("Timeout");
-    //         //drv_x.writeRegister8(DRV2605_REG_GO, drv_x.readRegister8(DRV2605_REG_GO)  - 0x01);
-    //         drv_x.begin();
-    //         drv_x.useLRA();
-    //         break;
-    //     }
-    // }
+    //Control 4
+    uint8_t control_4_val = 0;
+    control_4_val |= (3<<4);                                                        //Set Auto Cal Time to 1000 ms (minimum), 1200 ms (maximum)
+    drv_x->writeRegister8(DRV2605_REG_CONTROL4, control_4_val);
 
-    // if((drv_x.readRegister8(0x00) & (0x08))){
-    //     Serial.println("AUTO Calibration Failed");
-        
-    // }
+    if(set_up_type == AutoCalibrate){
+        //Auto Calibraiton
+        drv_x->writeRegister8(DRV2605_REG_MODE, 0x07);                                   //Auto Calibration Mode
+
+        drv_x->go();                                                                     //Begin Auto Calibration
+        while((drv_x->readRegister8(DRV2605_REG_GO)  & 0x01)!=0){                        //Wait For Calibration to finish
+            delay(2);
+        }                        
+
+        //Check if Calibration was successful
+        if((drv_x->readRegister8(DRV2605_REG_STATUS) & (0x08))){                                       
+            Serial.println("AUTO Calibration Failed");
+            
+        }
+    } else if (set_up_type == Default){
+        drv_x->writeRegister8(DRV2605_REG_AUTOCALCOMP, CompensationDefault);
+        drv_x->writeRegister8(DRV2605_REG_AUTOCALEMP, BackEMFDefault);
+    }
     
-    drv_x.selectLibrary(6);
-    drv_x.setMode(DRV2605_MODE_INTTRIG); 
-    drv_x.setWaveform(0, 0);
-	drv_x.go();
-    //Serial.println("AUTO Calibration Done");
+    //Setup as LRA in Predef Mode
+    drv_x->selectLibrary(6);
+    drv_x->setMode(DRV2605_MODE_INTTRIG); 
+    drv_x->setWaveform(0, 0);
+	drv_x->go();
+    
+    /*Use this to see print out of Calibration Values */
+    // Serial.print("Motor ");
+    // Serial.print(motorNum);
+    // Serial.print(" compensation:");
+    // Serial.print(drv_x->readRegister8(DRV2605_REG_AUTOCALCOMP));
+    // Serial.print(" back-EMF:");
+    // Serial.println(drv_x->readRegister8(DRV2605_REG_AUTOCALEMP));
     return;
 }
 
@@ -310,13 +310,13 @@ void vtf_driver::LRA_setup(int motorNum, Adafruit_DRV2605 drv_x){
 
 */
 /**************************************************************************/
-void vtf_driver::ERM_setup(int motorNum, Adafruit_DRV2605 drv_x){
+void vtf_driver::ERM_setup(int motorNum, Adafruit_DRV2605* drv_x){
     change_motor(motorNum);
-    drv_x.begin();
-    drv_x.selectLibrary(1);
-	drv_x.setMode(DRV2605_MODE_INTTRIG); 
-	drv_x.setWaveform(0, 0);
-    drv_x.go();
+    drv_x->begin();
+    drv_x->selectLibrary(1);
+	drv_x->setMode(DRV2605_MODE_INTTRIG); 
+	drv_x->setWaveform(0, 0);
+    drv_x->go();
 }
 
 uint8_t vtf_driver::is_LRA(int motorNum){

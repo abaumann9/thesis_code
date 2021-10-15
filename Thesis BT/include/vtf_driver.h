@@ -22,14 +22,22 @@
 #define MOTOR11 11
 #define MOTOR12 12
 
+#define RatedVoltage            99
+#define OverDriveVoltage        161
+#define CompensationDefault      12
+#define BackEMFDefault           108
+
+#define Default                  0
+#define AutoCalibrate           1
+
 class vtf_driver {
     public:
         vtf_driver(void);
         void change_motor(int motorNum);
         void tcas_set_multi(int* motors);
         void go_multi(int* motors, Adafruit_DRV2605 drv_x);
-        void LRA_setup(int motorNum, Adafruit_DRV2605 drv_x);
-        void ERM_setup(int motorNum, Adafruit_DRV2605 drv_x);
+        void LRA_setup(int motorNum, Adafruit_DRV2605* drv_x, int set_up_type);
+        void ERM_setup(int motorNum, Adafruit_DRV2605* drv_x);
         uint8_t get_tcas(int motorNum);
         uint8_t get_tcas_port(int motorNum);
         uint8_t is_LRA(int motorNum);
