@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include "Arduino_LSM9DS1.h"
 
+
+
 // BLE Service that is advertised
 BLEService vtfService("d2411652-234a-11ec-9621-0242ac130002"); // BLE LED Service
 
@@ -521,16 +523,20 @@ void processPreDefined(int* data){
 
 		already_set = 0;
 	}
-	Serial.print("DATA BLCOK INFO: First: ");
-	for(int i = 0; i<8; i++){
-		Serial.print(first[i]);
-	}
-	Serial.print(" Second: ");
-	for(int i = 0; i<8; i++){
-		Serial.print(second[i]);
-	}
-	Serial.print(" Data: ");
-	Serial.println(data[1]+1);
+	Serial.print("DATA BLCOK INFO: Data[1]: ");
+	Serial.print(data[1]);
+
+	// for(int i = 0; i<8; i++){
+	// 	Serial.print(first[i]);
+	// }
+	Serial.print(" Data[2]: ");
+	Serial.print(data[2]);
+	// for(int i = 0; i<8; i++){
+	// 	Serial.print(second[i]);
+	// }
+	Serial.print(" Data[3]: ");
+	Serial.print(data[3]);
+	
 	driver.tcas_set_multi(motors);
 
 
@@ -549,7 +555,7 @@ void processPreDefined(int* data){
 /**************************************************************************/
 void processBlock(int* data, int size_of_data){
 	//2D Block to pack data into
-	int data_block [size_of_data][10];
+	int data_block [size_of_data][8];
 
 	//Data counters
 	int command_start_cnt = 0;
@@ -811,7 +817,7 @@ void setup() {
 
 	Wire.begin();
 	Wire.setClock(100000);
-	Wire.setTimeout(10000);
+	//Wire.setTimeout(10000);
 
 	rgb_setup();
 	bluetooth_setup();
@@ -825,9 +831,7 @@ void setup() {
 void loop() {
 	// put your main code here, to run repeatedly:
 	//Serial.println("Setup Done");
-	float xAcc, yAcc, zAcc;
-	float xGyro, yGyro, zGyro;
-	float roll, pitch, heading;
+
 	int incomingByte = 0;
 	int buffer = 20;
 	int start_cnt = 0;
@@ -836,6 +840,11 @@ void loop() {
 	int data_pos = 0;
 	int* data_to_process;
 	data_to_process = (int*)malloc(sizeof(int) * buffer);
+
+	int test1[3] = {0,1,-1};
+	int test2[2] = {2,-1};
+	
+
 
 	while(1){
 
@@ -855,24 +864,6 @@ void loop() {
 			digitalWrite(LED_BUILTIN, LOW); 
 		}
 
-		//Gyroscope Processing//
-		// if (IMU.gyroscopeAvailable() && IMU.accelerationAvailable()) {
-		// 	IMU.readAcceleration(xAcc, yAcc, zAcc);
-        // 	IMU.readGyroscope(xGyro, yGyro, zGyro);
-		// 	filter.updateIMU(xGyro, yGyro, zGyro, xAcc, yAcc, zAcc);
-		// 	roll = filter.getRoll();
-		// 	pitch = filter.getPitch();
-		// 	heading = filter.getYaw();
-		// 	Serial.print("Roll: ");
-		// 	Serial.print(roll);
-		// 	Serial.print(" Pitch: ");
-		// 	Serial.print(pitch);
-		// 	Serial.print(" Heding: ");
-		// 	Serial.println(heading);
-			
-		// }
-		
-
 
 		//SERIAL PROCESSING//
 		if(Serial.available() > 0){
@@ -888,9 +879,21 @@ void loop() {
 					getting_data = 0;
 					data_pos = 0;
 					endcnt = 0;
-
+				// 	driver.tcas_set_multi(test1);
+				// 	set_multi(1,test1);
+				// 	drv_0.go();
+				// 	Wire.endTransmission();
+				// 	driver.tcas_set_multi(test2);
+				// 	set_multi(1,test2);
+				// 	drv_0.go();
+				// 	Wire.endTransmission();
 				} 
 			} else {
+				if(endcnt == 1){
+					data_to_process[data_pos] = EndBlock;
+					data_pos ++;
+					endcnt = 0;
+				}
 				data_to_process[data_pos] = incomingByte;
 				//Serial.print(incomingByte);
 				data_pos ++;
