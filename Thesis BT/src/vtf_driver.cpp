@@ -17,18 +17,20 @@ vtf_driver::vtf_driver() {}
 void vtf_driver::change_motor(int motorNum){
     byte error;
     byte error1;
+    byte error2;
+
+    int tcas = get_tcas(motorNum);
+    int port = get_tcas_port(motorNum);
+    Serial.println(tcas, HEX);
+    Serial.println(port, DEC);
 
 
-    //Serial.println(get_tcas(motorNum), HEX);
-    //Serial.println(get_tcas_port(motorNum), DEC);
-
-
-    Wire.beginTransmission(get_tcas(motorNum));
-    Wire.write(1 << get_tcas_port(motorNum));
-    error = Wire.endTransmission(get_tcas(motorNum));
+    Wire.beginTransmission(tcas);
+    Wire.write(1 << port);
+    error = Wire.endTransmission(tcas);
     if (error) {
 		Serial.print("Error occured when writing to ");
-        if(get_tcas(motorNum) == TCAADDR0){
+        if(tcas == TCAADDR0){
             Serial.println("TCAADDR0");
         } else {
             Serial.println("TCAADDR1");
@@ -38,7 +40,7 @@ void vtf_driver::change_motor(int motorNum){
 		Serial.println();
 	}
 
-    if(get_tcas(motorNum) == TCAADDR0){
+    if(tcas == TCAADDR0){
         Wire.beginTransmission(TCAADDR1);
         Wire.write(0);
         error1 = Wire.endTransmission(TCAADDR1);
@@ -51,10 +53,10 @@ void vtf_driver::change_motor(int motorNum){
 	} else {
         Wire.beginTransmission(TCAADDR0);
         Wire.write(0);
-        error1 = Wire.endTransmission(TCAADDR0);
-        if (error1) {
+        error2 = Wire.endTransmission(TCAADDR0);
+        if (error2) {
 		    Serial.println("Error occured when writing to TCAADDR0");
-		if (error1 == 5)
+		if (error2 == 5)
             Serial.println("It was a timeout");
             Serial.println();
         }
@@ -74,53 +76,59 @@ void vtf_driver::change_motor(int motorNum){
 void vtf_driver::tcas_set_multi(int *motors){
     uint8_t TCAADDR0_Addr = 0;
     uint8_t TCAADDR1_Addr = 0;
-    byte error;
-    byte error1;
-
 
     for(int i = 0; i < 14; i++){ 
         if(motors[i] == -1){
             break;
-        } else if(motors[i] == 0){
-            TCAADDR1_Addr = TCAADDR1_Addr + (1<<3);
-
-        } else if (motors[i] == 1){
-            TCAADDR1_Addr = TCAADDR1_Addr + (1<<2);
+        } else {
+            if(get_tcas(motors[i])==TCAADDR1_Addr){
+                TCAADDR1_Addr = TCAADDR1_Addr + (1<<get_tcas_port(motors[i]));
+            } else {
+                TCAADDR0_Addr = TCAADDR0_Addr + (1<<get_tcas_port(motors[i]));
+            }
             
-        } else if (motors[i] == 2){
-            TCAADDR1_Addr = TCAADDR1_Addr + (1<<1);
-        
-        } else if (motors[i] == 3){
-            TCAADDR0_Addr = TCAADDR0_Addr + (1<<3);
-        
-        } else if (motors[i] == 4){
-            TCAADDR0_Addr = TCAADDR0_Addr + (1<<2);
-        
-        } else if (motors[i] == 5){
-            TCAADDR0_Addr = TCAADDR0_Addr + (1<<1);
-        
-        } else if (motors[i] == 6){
-            TCAADDR0_Addr = TCAADDR0_Addr + (1<<0);
-        
-        } else if (motors[i] == 7){
-            TCAADDR1_Addr = TCAADDR1_Addr + (1<<4);
-        
-        } else if (motors[i] == 8){
-            TCAADDR1_Addr = TCAADDR1_Addr + (1<<5);
-        
-        } else if (motors[i] == 9){
-            TCAADDR0_Addr = TCAADDR0_Addr + (1<<4);
-        
-        } else if (motors[i] == 10){
-            TCAADDR0_Addr = TCAADDR0_Addr + (1<<5);
-        
-        } else if (motors[i] == 11){
-            TCAADDR0_Addr = TCAADDR0_Addr + (1<<6);
-        
-        } else if (motors[i] == 12){
-            TCAADDR0_Addr = TCAADDR0_Addr + (1<<7);
-
         }
+        
+        // if(motors[i] == 0){
+        //     TCAADDR1_Addr = TCAADDR1_Addr + (1<<3);
+
+        // } else if (motors[i] == 1){
+        //     TCAADDR1_Addr = TCAADDR1_Addr + (1<<2);
+            
+        // } else if (motors[i] == 2){
+        //     TCAADDR1_Addr = TCAADDR1_Addr + (1<<1);
+        
+        // } else if (motors[i] == 3){
+        //     TCAADDR0_Addr = TCAADDR0_Addr + (1<<3);
+        
+        // } else if (motors[i] == 4){
+        //     TCAADDR0_Addr = TCAADDR0_Addr + (1<<2);
+        
+        // } else if (motors[i] == 5){
+        //     TCAADDR0_Addr = TCAADDR0_Addr + (1<<1);
+        
+        // } else if (motors[i] == 6){
+        //     TCAADDR0_Addr = TCAADDR0_Addr + (1<<0);
+        
+        // } else if (motors[i] == 7){
+        //     TCAADDR1_Addr = TCAADDR1_Addr + (1<<4);
+        
+        // } else if (motors[i] == 8){
+        //     TCAADDR1_Addr = TCAADDR1_Addr + (1<<5);
+        
+        // } else if (motors[i] == 9){
+        //     TCAADDR0_Addr = TCAADDR0_Addr + (1<<4);
+        
+        // } else if (motors[i] == 10){
+        //     TCAADDR0_Addr = TCAADDR0_Addr + (1<<5);
+        
+        // } else if (motors[i] == 11){
+        //     TCAADDR0_Addr = TCAADDR0_Addr + (1<<6);
+        
+        // } else if (motors[i] == 12){
+        //     TCAADDR0_Addr = TCAADDR0_Addr + (1<<7);
+
+        // }
     }
     // Serial.println("0x70 Add");
     // Serial.println(TCAADDR0_Addr, BIN);
@@ -167,9 +175,9 @@ void vtf_driver::go_multi(int *motors, Adafruit_DRV2605 drv_x){
 /**************************************************************************/
 uint8_t vtf_driver::get_tcas(int motorNum){
     if(motorNum < 13){
-        if(motorNum == 0 || motorNum == 1 || motorNum == 2 || motorNum == 7 || motorNum == 8){
+        if(motorNum == 11 || motorNum == 12 || motorNum == 9 || motorNum == 5 || motorNum == 10){
             return TCAADDR1;
-        } else if(motorNum == 3 || motorNum == 4 || motorNum == 5 || motorNum == 6 || motorNum == 8 || motorNum == 9 || motorNum == 10 || motorNum == 11 || motorNum == 12) {
+        } else if(motorNum == 7 || motorNum == 8 || motorNum == 4 || motorNum == 2 || motorNum == 8 || motorNum == 6 || motorNum == 3 || motorNum == 1 || motorNum == 0) {
             return TCAADDR0;
         }
     }
@@ -188,21 +196,21 @@ uint8_t vtf_driver::get_tcas(int motorNum){
 /**************************************************************************/
 uint8_t vtf_driver::get_tcas_port(int motorNum){
     if(motorNum < 13){
-        if(motorNum == 6){
+        if(motorNum == 2){
             return 0;
-        } else if (motorNum == 2 || motorNum == 5){
+        } else if (motorNum == 9 || motorNum == 4){
             return 1;
-        } else if (motorNum == 1 || motorNum == 4){
+        } else if (motorNum == 12 || motorNum == 8){
             return 2;
-        } else if (motorNum == 0 || motorNum == 3){
+        } else if (motorNum == 11 || motorNum == 7){
             return 3;
-        } else if (motorNum == 7 || motorNum == 9){
+        } else if (motorNum == 10 || motorNum == 6){
             return 4;
-        } else if (motorNum == 8 || motorNum == 10){
+        } else if (motorNum == 3 || motorNum == 5){
             return 5;
-        } else if (motorNum == 11){
+        } else if (motorNum == 1){
             return 6;
-        } else if (motorNum == 12){
+        } else if (motorNum == 0){
             return 7;
         }
 

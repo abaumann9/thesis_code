@@ -44,6 +44,7 @@ BLECharacteristic switchCharacteristic("b8aff320-234a-11ec-9621-0242ac130002",BL
 /*DEMO NUMBERS*/
 #define Demo1				0
 #define Demo2				1
+#define Demo3				2
 int current_demo_number = 	0;
 
 /* MOTOR DRIVER INSTANCES */
@@ -60,7 +61,7 @@ Adafruit_DRV2605 drv_9;
 Adafruit_DRV2605 drv_10;
 Adafruit_DRV2605 drv_11;
 Adafruit_DRV2605 drv_12;
-Adafruit_DRV2605* driver_list[13] = {&drv_0, &drv_1, &drv_2, &drv_3, &drv_4, &drv_5, &drv_6, &drv_7, &drv_8, &drv_9, &drv_11, &drv_12};
+Adafruit_DRV2605* driver_list[13] = {&drv_0, &drv_1, &drv_2, &drv_3, &drv_4, &drv_5, &drv_6, &drv_7, &drv_8, &drv_9, &drv_10, &drv_11, &drv_12};
 
 /* VTF DRIVER INSTANCE */
 vtf_driver driver;
@@ -106,6 +107,67 @@ void rgb_setup(void){
   digitalWrite(LEDB, HIGH);                // will turn the LED off
 }
 
+void set_motor(int pre_programmed_num, int motor){
+	Serial.print("VIB:");
+	Serial.print(pre_programmed_num);
+	Serial.print(" Motor:");
+	Serial.println(motor);
+
+	if(motor == 0){
+		drv_0.setWaveform(motor_0_pos, (pre_programmed_num));
+		motor_0_pos++;
+
+	} else if (motor == 1){
+		drv_1.setWaveform(motor_1_pos, (pre_programmed_num));
+		motor_1_pos++;
+		
+	} else if (motor == 2){
+		drv_2.setWaveform(motor_2_pos, (pre_programmed_num));
+		motor_2_pos++;
+	
+	} else if (motor == 3){
+		drv_3.setWaveform(motor_3_pos, (pre_programmed_num));
+		motor_3_pos++;
+	
+	} else if (motor == 4){
+		drv_4.setWaveform(motor_4_pos, (pre_programmed_num));
+		motor_4_pos++;
+	
+	} else if (motor == 5){
+		drv_5.setWaveform(motor_5_pos, (pre_programmed_num));
+		motor_5_pos++;
+	
+	} else if (motor == 6){
+		drv_6.setWaveform(motor_6_pos, (pre_programmed_num));
+		motor_6_pos++;
+	
+	} else if (motor == 7){
+		drv_7.setWaveform(motor_7_pos, (pre_programmed_num));
+		motor_7_pos++;
+	
+	} else if (motor == 8){
+		drv_8.setWaveform(motor_8_pos, (pre_programmed_num));
+		motor_8_pos++;
+	
+	} else if (motor == 9){
+		drv_9.setWaveform(motor_9_pos, (pre_programmed_num));
+		motor_9_pos++;
+	
+	} else if (motor == 10){
+		drv_10.setWaveform(motor_10_pos, (pre_programmed_num));
+		motor_10_pos++;
+	
+	} else if (motor == 11){
+		drv_11.setWaveform(motor_11_pos, (pre_programmed_num));
+		motor_11_pos++;
+	
+	} else if (motor == 12){
+		drv_12.setWaveform(motor_12_pos, (pre_programmed_num));
+		motor_12_pos++;
+
+	}
+}
+
 /**************************************************************************/
 /*!
   @brief Set the waveform of multiple DRVs. Assumes they have already been 
@@ -115,64 +177,14 @@ void rgb_setup(void){
 */
 /**************************************************************************/
 void set_multi(int pre_programmed_num, int *motors){
-	    for(int i = 0; i < 14; i++){ 
+	for(int i = 0; i < 14; i++){ 
         if(motors[i] == -1){
             break;
 			
-        } else if(motors[i] == 0){
-			drv_0.setWaveform(motor_0_pos, (pre_programmed_num));
-			motor_0_pos++;
-
-        } else if (motors[i] == 1){
-            drv_1.setWaveform(motor_1_pos, (pre_programmed_num));
-			motor_1_pos++;
-            
-        } else if (motors[i] == 2){
-            drv_2.setWaveform(motor_2_pos, (pre_programmed_num));
-			motor_2_pos++;
-        
-        } else if (motors[i] == 3){
-            drv_3.setWaveform(motor_3_pos, (pre_programmed_num));
-			motor_3_pos++;
-        
-        } else if (motors[i] == 4){
-			drv_4.setWaveform(motor_4_pos, (pre_programmed_num));
-			motor_4_pos++;
-        
-        } else if (motors[i] == 5){
-			drv_5.setWaveform(motor_5_pos, (pre_programmed_num));
-			motor_5_pos++;
-        
-        } else if (motors[i] == 6){
-			drv_6.setWaveform(motor_6_pos, (pre_programmed_num));
-			motor_6_pos++;
-        
-        } else if (motors[i] == 7){
-			drv_7.setWaveform(motor_7_pos, (pre_programmed_num));
-			motor_7_pos++;
-        
-        } else if (motors[i] == 8){
-			drv_8.setWaveform(motor_8_pos, (pre_programmed_num));
-			motor_8_pos++;
-        
-        } else if (motors[i] == 9){
-			drv_9.setWaveform(motor_9_pos, (pre_programmed_num));
-			motor_9_pos++;
-        
-        } else if (motors[i] == 10){
-			drv_10.setWaveform(motor_10_pos, (pre_programmed_num));
-			motor_10_pos++;
-        
-        } else if (motors[i] == 11){
-			drv_11.setWaveform(motor_11_pos, (pre_programmed_num));
-			motor_11_pos++;
-        
-        } else if (motors[i] == 12){
-			drv_12.setWaveform(motor_12_pos, (pre_programmed_num));
-			motor_12_pos++;
-
-        }
-    }
+        } else {
+			set_motor(pre_programmed_num, motors[i]);
+    	}
+	}
 }
 
 /**************************************************************************/
@@ -250,9 +262,18 @@ void processGo(int pause){
 		}
 
 		Serial.println();
-		set_multi(0,global_motors_set);
-		driver.go_multi(global_motors_set, drv_0);
-		//while((drv_5.readRegister8(DRV2605_REG_GO)  & 0x01)!=0){}
+
+		for(int i = 0; i < global_motor_pos; i++ ){
+			driver.change_motor(global_motors_set[i]);
+			set_motor(0,global_motors_set[i]);
+			driver_list[global_motors_set[i]]->go();
+			Wire.endTransmission();
+		}
+
+		Serial.println("Motors Fired");
+
+		// driver.go_multi(global_motors_set, drv_0);
+		while((drv_1.readRegister8(DRV2605_REG_GO)  & 0x01)!=0){}
 		
 		//Clear Set motors
 		for(int i = 0; i < 14; i++){
@@ -326,6 +347,11 @@ void run_demo(int demo_num){
 	//Values to save roll and pitch data
 	float xAcc, yAcc, zAcc;
 	float roll, pitch;
+
+	int motor_3_intensity, motor_4_intensity;
+	int motor_8_intensity, motor_9_intensity;
+	int max_intensity = 100;
+	int cnt = 0;
 	
 	/*
 	 * Demo 1 takes acceleration data from the IMU in the nano 33
@@ -373,6 +399,10 @@ void run_demo(int demo_num){
 			}
 		}
 
+	/*
+	 * Demo 2 takes works the same as Demo 1 but works on the front to back angle
+	 * rather then the angle of rotation
+	 */
 	} else if(demo_num == Demo2){
 		while(Serial.available() == 0){
 			if (IMU.accelerationAvailable()) {
@@ -414,6 +444,92 @@ void run_demo(int demo_num){
 				}
 			}
 		}
+
+	} else if(demo_num == Demo3){
+		while(Serial.available() == 0){
+			if (IMU.accelerationAvailable()) {
+				IMU.readAcceleration(xAcc, yAcc, zAcc);
+				motor_3_intensity = 0;
+				motor_4_intensity = 0;
+				motor_8_intensity = 0;
+				motor_9_intensity = 0;
+
+				if(xAcc > 0.1){
+					xAcc = 100*xAcc;
+					pitch = map(xAcc, 0, 97, 0, 90);
+					motor_3_intensity += round(pitch);
+					motor_8_intensity += round(pitch);
+				} else if(xAcc < -0.1){
+					xAcc = 100*xAcc;
+					pitch = map(xAcc, 0, -100, 0, 90);
+					motor_4_intensity += round(pitch);
+					motor_9_intensity += round(pitch);
+				}
+
+				if(yAcc > 0.1){
+					yAcc = 100*yAcc;
+					roll = map(yAcc, 0, 97, 0, 90);
+					motor_3_intensity += round(roll);
+					motor_4_intensity += round(roll);
+				} else if(yAcc < -0.1){
+					yAcc = 100*yAcc;
+					roll = map(yAcc, 0, -100, 0, 90);
+					motor_8_intensity += round(roll);
+					motor_9_intensity += round(roll);
+				}
+
+				if(cnt > 100){
+					cnt = 0;
+					Serial.print("Motor 3:");
+					Serial.print(motor_3_intensity);
+					Serial.print(" Motor 4:");
+					Serial.print(motor_4_intensity);
+					Serial.print(" Motor 8:");
+					Serial.print(motor_8_intensity);
+					Serial.print(" Motor 9:");
+					Serial.println(motor_9_intensity);
+				}
+				cnt++;
+
+				driver.change_motor(MOTOR3);
+				drv_3.setRealtimeValue(motor_3_intensity);
+				Wire.endTransmission();
+				driver.change_motor(MOTOR4);
+				drv_3.setRealtimeValue(motor_4_intensity);
+				Wire.endTransmission();
+				driver.change_motor(MOTOR8);
+				drv_3.setRealtimeValue(motor_8_intensity);
+				Wire.endTransmission();
+				driver.change_motor(MOTOR9);
+				drv_3.setRealtimeValue(motor_9_intensity);
+				Wire.endTransmission();
+
+				if(motor_3_intensity > max_intensity){
+					driver.change_motor(MOTOR0);
+					drv_0.setWaveform(0,10);
+					drv_0.go();
+					Wire.endTransmission();
+				} else if(motor_4_intensity > max_intensity){
+					driver.change_motor(MOTOR3);
+					drv_3.setWaveform(0,10);
+					drv_3.go();
+					Wire.endTransmission();
+				} else if(motor_8_intensity > max_intensity){
+					driver.change_motor(MOTOR10);
+					drv_10.setWaveform(0,10);
+					drv_10.go();
+					Wire.endTransmission();
+				} else if(motor_9_intensity > max_intensity){
+					driver.change_motor(MOTOR12);
+					drv_11.setWaveform(0,10);
+					drv_11.go();
+					Wire.endTransmission();
+				}
+
+				
+			}
+		}
+	
 	}
 }
 
@@ -445,7 +561,18 @@ void processDemo(int* data){
 		driver.tcas_set_multi(second);
 		drv_1.setMode(DRV2605_MODE_REALTIME); 
 		delay(300);
+	} else if(data[1] == Demo3){
+		Serial.println("BEGIN DEMO 3");
+		current_demo_number = Demo3;
+		driver.tcas_set_multi(first);
+		drv_1.setMode(DRV2605_MODE_REALTIME); 
+		delay(300);
+		driver.tcas_set_multi(second);
+		drv_1.setMode(DRV2605_MODE_REALTIME); 
+		delay(300);
 	}
+
+	run_demo(current_demo_number);
 }
 
 /**************************************************************************/
@@ -476,6 +603,7 @@ void processRealTime(int* data){
 */
 /**************************************************************************/
 void processPreDefined(int* data){
+	byte test;
 	int motor_pos = 0;
 	int motors[14], first[8] = {0}, second[8]= {0};
 	int firstint = data[3];
@@ -523,24 +651,25 @@ void processPreDefined(int* data){
 
 		already_set = 0;
 	}
+
 	Serial.print("DATA BLCOK INFO: Data[1]: ");
 	Serial.print(data[1]);
 
-	// for(int i = 0; i<8; i++){
-	// 	Serial.print(first[i]);
-	// }
 	Serial.print(" Data[2]: ");
 	Serial.print(data[2]);
-	// for(int i = 0; i<8; i++){
-	// 	Serial.print(second[i]);
-	// }
+
 	Serial.print(" Data[3]: ");
 	Serial.print(data[3]);
-	
-	driver.tcas_set_multi(motors);
 
 
-	set_multi(data[1]+1, motors);
+	for(int i  = 0; i<motor_pos; i++){
+		driver.change_motor(motors[i]);
+		set_motor(data[1]+1,motors[i]);
+		test = Wire.endTransmission();
+		Serial.print("WIRE END: ");
+		Serial.println(test);
+	}
+
 }
 
 
@@ -555,7 +684,7 @@ void processPreDefined(int* data){
 /**************************************************************************/
 void processBlock(int* data, int size_of_data){
 	//2D Block to pack data into
-	int data_block [size_of_data][8];
+	int data_block [size_of_data][10];
 
 	//Data counters
 	int command_start_cnt = 0;
@@ -795,13 +924,17 @@ void motor_setup(void){
 	driver.LRA_setup(MOTOR0, &drv_0, Default);
 	driver.LRA_setup(MOTOR1, &drv_1, Default);
 	driver.LRA_setup(MOTOR2, &drv_2, Default);
+	
 	driver.ERM_setup(MOTOR3, &drv_3);
 	driver.ERM_setup(MOTOR4, &drv_4);
+
 	driver.LRA_setup(MOTOR5, &drv_5, Default);
 	driver.LRA_setup(MOTOR6, &drv_6, Default);
 	driver.LRA_setup(MOTOR7, &drv_7, Default);
+
 	driver.ERM_setup(MOTOR8, &drv_8);
 	driver.ERM_setup(MOTOR9, &drv_9);
+
 	driver.LRA_setup(MOTOR10, &drv_10, Default);
 	driver.LRA_setup(MOTOR11, &drv_11, Default);
 	driver.LRA_setup(MOTOR12, &drv_12, Default);
@@ -811,13 +944,13 @@ void motor_setup(void){
 void setup() {
   // put your setup code here, to run once:
   	Serial.begin(9600);
-	while (!Serial);
-	Serial.println("Haptic Motor Driver test");
+	// while (!Serial);
+	Serial.println("VTF Driver Running");
 	delay(1000);
 
 	Wire.begin();
 	Wire.setClock(100000);
-	//Wire.setTimeout(10000);
+	Wire.setTimeout(10000);
 
 	rgb_setup();
 	bluetooth_setup();
@@ -825,6 +958,10 @@ void setup() {
 	imu_setup();
 
 	Serial.println("Setup Done");
+	driver.change_motor(MOTOR12);
+	drv_12.setWaveform(0,1);
+	drv_12.setWaveform(1,0);
+	drv_12.go();
   
 }
 
@@ -840,11 +977,6 @@ void loop() {
 	int data_pos = 0;
 	int* data_to_process;
 	data_to_process = (int*)malloc(sizeof(int) * buffer);
-
-	int test1[3] = {0,1,-1};
-	int test2[2] = {2,-1};
-	
-
 
 	while(1){
 
@@ -879,14 +1011,6 @@ void loop() {
 					getting_data = 0;
 					data_pos = 0;
 					endcnt = 0;
-				// 	driver.tcas_set_multi(test1);
-				// 	set_multi(1,test1);
-				// 	drv_0.go();
-				// 	Wire.endTransmission();
-				// 	driver.tcas_set_multi(test2);
-				// 	set_multi(1,test2);
-				// 	drv_0.go();
-				// 	Wire.endTransmission();
 				} 
 			} else {
 				if(endcnt == 1){
